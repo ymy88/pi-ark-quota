@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { classifyFailure, colorRole, extractPeriods, formatDetails, renderQuota, shortLabel } from "../index.ts";
+import { classifyFailure, colorRole, extractPeriods, formatDetails, isArkProvider, renderQuota, shortLabel } from "../index.ts";
 
 const plain = (periods: Parameters<typeof renderQuota>[1]) => renderQuota((_r, t) => t, periods) ?? "";
 
@@ -62,5 +62,12 @@ assert.ok(formatDetails([]).includes("No quota data"));
 assert.equal(classifyFailure(Object.assign(new Error("spawn arkcli ENOENT"), { code: "ENOENT" })), "missing");
 assert.equal(classifyFailure(new Error("boom")), "error");
 assert.equal(classifyFailure(null), "error");
+
+// isArkProvider - only show for matching providers
+assert.equal(isArkProvider("volcengine-ark"), true);
+assert.equal(isArkProvider("Volcengine-Ark/glm-5.3"), true); // substring match, case-insensitive
+assert.equal(isArkProvider("anthropic"), false);
+assert.equal(isArkProvider(undefined), false);
+assert.equal(isArkProvider("my-proxy", ["my-proxy"]), true);
 
 console.log("all assertions passed");

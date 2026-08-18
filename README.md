@@ -42,6 +42,9 @@ Or skip step 1: if arkcli is missing, the extension shows a hint and
 Then add `npm:pi-ark-quota` to the `packages` array in `~/.pi/agent/settings.json`
 and restart pi (or `/reload`).
 
+The status only appears when the active model's provider matches `ARK_QUOTA_PROVIDERS`
+(default: `volcengine-ark`); switch to any other provider and it hides itself.
+
 ## Commands
 
 - `/ark-quota` — force-refresh and show per-period usage with reset times.
@@ -52,6 +55,7 @@ and restart pi (or `/reload`).
 |---|---|---|
 | `ARK_QUOTA_PRODUCT` | `coding-plan` | arkcli product id (`coding-plan`, `agent-plan`, …) |
 | `ARK_QUOTA_TTL_MS` | `300000` | cache TTL in milliseconds |
+| `ARK_QUOTA_PROVIDERS` | `volcengine-ark` | comma-separated provider-id substrings; the status only shows when the active provider matches |
 
 ## Status states
 

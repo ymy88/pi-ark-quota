@@ -12,8 +12,10 @@
  *   arkcli auth login volc-sso        # once per machine
  *
  * Config (env):
- *   ARK_QUOTA_PRODUCT   default "coding-plan"
- *   ARK_QUOTA_TTL_MS    cache TTL, default 300000 (5 min)
+ *   ARK_QUOTA_PRODUCT    default "coding-plan"
+ *   ARK_QUOTA_TTL_MS     cache TTL, default 300000 (5 min)
+ *   ARK_QUOTA_PROVIDERS  comma-separated provider-id substrings to match,
+ *                        default "volcengine-ark"
  *
  * Status bar: ⚡ 5h 32% · wk 45% · mo 60%   (green <70, yellow <90, red ≥90)
  * Degraded states render dim: "⚡ arkcli missing" (run /ark-quota install),
@@ -28,6 +30,10 @@ const execFileP = promisify(execFile);
 
 const PRODUCT = process.env.ARK_QUOTA_PRODUCT || "coding-plan";
 const TTL_MS = Number(process.env.ARK_QUOTA_TTL_MS) || 5 * 60 * 1000;
+const PROVIDERS = (process.env.ARK_QUOTA_PROVIDERS || "volcengine-ark")
+	.split(",")
+	.map((s) => s.trim().toLowerCase())
+	.filter(Boolean);
 const TIMEOUT_MS = 15_000;
 
 // ---- pure helpers (exported for tests) ----
@@ -95,6 +101,13 @@ export function classifyFailure(err: unknown): "missing" | "error" {
 	return (err as { code?: string })?.code === "ENOENT" ? "missing" : "error";
 }
 
+/** Should the quota status show for this provider id? */
+export function isArkProvider(providerId: string | undefined, list: string[] = PROVIDERS): boolean {
+	if (!providerId) return false;
+	const id = providerId.toLowerCase();
+	return list.some((frag) => id.includes(frag));
+}
+
 // ---- extension ----
 
 export default function arkQuotaExtension(pi: ExtensionAPI) {
@@ -104,6 +117,7 @@ export default function arkQuotaExtension(pi: ExtensionAPI) {
 	let lastPeriods: Period[] | null = null;
 	let lastFailure: "missing" | "error" | null = null;
 	let notifiedSetup = false;
+	let arkActive = false;
 
 	async function fetchQuota(): Promise<Period[] | null> {
 		if (inFlight) return null;
@@ -129,6 +143,22 @@ export default function arkQuotaExtension(pi: ExtensionAPI) {
 		}
 	}
 
+	function bindFg(ctx: any): ((role: string, t: string) => string) | null {
+		try {
+			return ctx?.ui?.theme?.fg?.bind(ctx.ui.theme) ?? null;
+		} catch {
+			return null; // theme proxy not ready (pi-web before initTheme)
+		}
+	}
+
+	function clearStatus() {
+		try {
+			lastCtx?.ui?.setStatus?.("ark-quota", undefined);
+		} catch {
+			/* already gone */
+		}
+	}
+
 	async function sync(setStatus: (s: string | undefined) => void, fg: (role: string, t: string) => string, notify?: (msg: string, level?: string) => void) {
 		const periods = await fetchQuota();
 		if (periods === null) {
@@ -149,28 +179,39 @@ export default function arkQuotaExtension(pi: ExtensionAPI) {
 		setStatus(styled ?? fg("dim", "⚡ ark ⌀")); // subscribed but empty -> dim
 	}
 
+	// Refresh visibility whenever the active model/provider changes.
+	function applyProvider(ctx: any) {
+		arkActive = isArkProvider(ctx?.model?.provider);
+		if (!arkActive) clearStatus();
+		return arkActive;
+	}
+
 	pi.on("session_start", async (_event, ctx) => {
 		lastCtx = ctx;
 		if (!ctx?.ui?.setStatus) return;
-		let fg: (role: string, t: string) => string;
-		try {
-			fg = ctx.ui.theme.fg.bind(ctx.ui.theme);
-		} catch {
-			return; // theme proxy not ready (pi-web before initTheme)
-		}
+		if (!applyProvider(ctx)) return; // not on an Ark provider - stay hidden
+		const fg = bindFg(ctx);
+		if (!fg) return;
 		ctx.ui.setStatus("ark-quota", fg("dim", "⚡ ark…"));
 		await sync((s) => ctx.ui.setStatus("ark-quota", s), fg, ctx.ui.notify?.bind(ctx.ui));
 	});
 
+	pi.on("model_select", async (_event, ctx) => {
+		lastCtx = ctx;
+		if (!ctx?.ui?.setStatus) return;
+		if (!applyProvider(ctx)) return;
+		const fg = bindFg(ctx);
+		if (!fg) return;
+		ctx.ui.setStatus("ark-quota", fg("dim", "⚡ ark…"));
+		await sync((s) => ctx.ui.setStatus("ark-quota", s), fg);
+	});
+
 	pi.on("agent_settled", async () => {
+		if (!arkActive) return;
 		const ctx = lastCtx;
 		if (!ctx?.ui?.setStatus) return;
-		let fg: (role: string, t: string) => string;
-		try {
-			fg = ctx.ui.theme.fg.bind(ctx.ui.theme);
-		} catch {
-			return;
-		}
+		const fg = bindFg(ctx);
+		if (!fg) return;
 		// stale cache only - no spinner churn mid-session
 		if (Date.now() - fetchedAt < TTL_MS && lastPeriods) return;
 		await sync((s) => ctx.ui.setStatus("ark-quota", s), fg);
@@ -198,6 +239,7 @@ export default function arkQuotaExtension(pi: ExtensionAPI) {
 			}
 
 			fetchedAt = 0; // force
+			if (!arkActive && lastCtx) applyProvider(lastCtx); // manual refresh works regardless
 			const periods = await fetchQuota();
 			if (periods === null) {
 				const hint =
@@ -207,13 +249,7 @@ export default function arkQuotaExtension(pi: ExtensionAPI) {
 				ctx?.ui?.notify?.(hint, "error");
 				return;
 			}
-			const fg = (() => {
-				try {
-					return ctx?.ui?.theme?.fg?.bind(ctx.ui.theme);
-				} catch {
-					return undefined;
-				}
-			})();
+			const fg = bindFg(ctx);
 			if (fg && ctx?.ui?.setStatus) {
 				const styled = renderQuota(fg, periods);
 				ctx.ui.setStatus("ark-quota", styled ?? fg("dim", "⚡ ark ⌀"));
