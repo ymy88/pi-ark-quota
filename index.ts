@@ -14,10 +14,10 @@
  * Config (env):
  *   ARK_QUOTA_PRODUCT    default "coding-plan"
  *   ARK_QUOTA_TTL_MS     cache TTL, default 300000 (5 min)
- *   ARK_QUOTA_URLS       comma-separated exact Coding Plan base URLs,
- *                        default both official endpoints:
- *                        https://ark.cn-beijing.volces.com/api/coding/v3 (OpenAI)
- *                        https://ark.cn-beijing.volces.com/api/coding (Anthropic)
+ *
+ * Visibility is pure exact-URL matching against the two official Coding Plan
+ * endpoints (OpenAI /api/coding/v3 and Anthropic /api/coding); provider names
+ * are arbitrary and never used.
  *
  * Status bar: ⚡ 5h 32% · wk 45% · mo 60%   (green <70, yellow <90, red ≥90)
  * Degraded states render dim: "⚡ arkcli missing" (run /ark-quota install),
@@ -32,13 +32,10 @@ const execFileP = promisify(execFile);
 
 const PRODUCT = process.env.ARK_QUOTA_PRODUCT || "coding-plan";
 const TTL_MS = Number(process.env.ARK_QUOTA_TTL_MS) || 5 * 60 * 1000;
-const URLS = (
-	process.env.ARK_QUOTA_URLS ||
-	"https://ark.cn-beijing.volces.com/api/coding/v3,https://ark.cn-beijing.volces.com/api/coding"
-)
-	.split(",")
-	.map((s) => s.trim().toLowerCase().replace(/\/+$/, ""))
-	.filter(Boolean);
+const URLS = [
+	"https://ark.cn-beijing.volces.com/api/coding/v3",
+	"https://ark.cn-beijing.volces.com/api/coding",
+].map((s) => s.toLowerCase());
 const TIMEOUT_MS = 15_000;
 
 // ---- pure helpers (exported for tests) ----

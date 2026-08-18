@@ -43,8 +43,7 @@ Then add `npm:pi-ark-quota` to the `packages` array in `~/.pi/agent/settings.jso
 and restart pi (or `/reload`).
 
 The status only appears when the active model's provider resolves to a base URL
-that **exactly equals** one of the two official Coding Plan endpoints
-(`ARK_QUOTA_URLS`, default both):
+that **exactly equals** one of the two official Coding Plan endpoints:
 
 - `https://ark.cn-beijing.volces.com/api/coding/v3` (OpenAI-compatible)
 - `https://ark.cn-beijing.volces.com/api/coding` (Anthropic-compatible)
@@ -62,7 +61,6 @@ provider stay hidden. Provider names are never used for the decision.
 |---|---|---|
 | `ARK_QUOTA_PRODUCT` | `coding-plan` | arkcli product id (`coding-plan`, `agent-plan`, …) |
 | `ARK_QUOTA_TTL_MS` | `300000` | cache TTL in milliseconds |
-| `ARK_QUOTA_URLS` | both official `ark.cn-beijing.volces.com/api/coding[/v3]` endpoints | comma-separated exact base URLs that trigger the status |
 
 ## Status states
 
