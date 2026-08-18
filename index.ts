@@ -14,12 +14,10 @@
  * Config (env):
  *   ARK_QUOTA_PRODUCT    default "coding-plan"
  *   ARK_QUOTA_TTL_MS     cache TTL, default 300000 (5 min)
- *   ARK_QUOTA_URLS       comma-separated coding-plan base-URL prefixes,
- *                        default "https://ark.cn-beijing.volces.com/api/coding"
- *                        (covers both the OpenAI /api/coding/v3 and
- *                        Anthropic /api/coding endpoints)
- *   ARK_QUOTA_PROVIDERS  fallback provider-id substrings when the base URL
- *                        cannot be resolved, default "volcengine-ark"
+ *   ARK_QUOTA_URLS       comma-separated exact Coding Plan base URLs,
+ *                        default both official endpoints:
+ *                        https://ark.cn-beijing.volces.com/api/coding/v3 (OpenAI)
+ *                        https://ark.cn-beijing.volces.com/api/coding (Anthropic)
  *
  * Status bar: ⚡ 5h 32% · wk 45% · mo 60%   (green <70, yellow <90, red ≥90)
  * Degraded states render dim: "⚡ arkcli missing" (run /ark-quota install),
@@ -34,11 +32,10 @@ const execFileP = promisify(execFile);
 
 const PRODUCT = process.env.ARK_QUOTA_PRODUCT || "coding-plan";
 const TTL_MS = Number(process.env.ARK_QUOTA_TTL_MS) || 5 * 60 * 1000;
-const PROVIDERS = (process.env.ARK_QUOTA_PROVIDERS || "volcengine-ark")
-	.split(",")
-	.map((s) => s.trim().toLowerCase())
-	.filter(Boolean);
-const URLS = (process.env.ARK_QUOTA_URLS || "https://ark.cn-beijing.volces.com/api/coding")
+const URLS = (
+	process.env.ARK_QUOTA_URLS ||
+	"https://ark.cn-beijing.volces.com/api/coding/v3,https://ark.cn-beijing.volces.com/api/coding"
+)
 	.split(",")
 	.map((s) => s.trim().toLowerCase().replace(/\/+$/, ""))
 	.filter(Boolean);
@@ -109,18 +106,11 @@ export function classifyFailure(err: unknown): "missing" | "error" {
 	return (err as { code?: string })?.code === "ENOENT" ? "missing" : "error";
 }
 
-/** Should the quota status show for this provider id? */
-export function isArkProvider(providerId: string | undefined, list: string[] = PROVIDERS): boolean {
-	if (!providerId) return false;
-	const id = providerId.toLowerCase();
-	return list.some((frag) => id.includes(frag));
-}
-
-/** Does this base URL point at a Coding Plan endpoint (not pay-per-use /api/v3)? */
-export function isCodingBaseUrl(url: string | undefined, prefixes: string[] = URLS): boolean {
+/** Does this base URL exactly equal a known Coding Plan endpoint? */
+export function isCodingBaseUrl(url: string | undefined, urls: string[] = URLS): boolean {
 	if (!url) return false;
-	const u = url.toLowerCase().replace(/\/+$/, "");
-	return prefixes.some((p) => u === p || u.startsWith(p + "/"));
+	const u = url.trim().toLowerCase().replace(/\/+$/, "");
+	return urls.includes(u);
 }
 
 // ---- extension ----
@@ -195,8 +185,8 @@ export default function arkQuotaExtension(pi: ExtensionAPI) {
 	}
 
 	// Refresh visibility whenever the active model/provider changes.
-	// Prefer the resolved base URL (coding-plan endpoints only); fall back to
-	// provider-id matching when auth cannot be resolved.
+	// Pure URL judgment: show only when the resolved base URL exactly equals
+	// a known Coding Plan endpoint. Provider names are arbitrary - never used.
 	function applyProvider(ctx: any) {
 		let baseUrl: string | undefined;
 		try {
@@ -205,10 +195,7 @@ export default function arkQuotaExtension(pi: ExtensionAPI) {
 		} catch {
 			baseUrl = undefined;
 		}
-		arkActive =
-			baseUrl !== undefined
-				? isCodingBaseUrl(baseUrl)
-				: isArkProvider(ctx?.model?.provider);
+		arkActive = isCodingBaseUrl(baseUrl);
 		if (!arkActive) clearStatus();
 		return arkActive;
 	}

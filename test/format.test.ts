@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { classifyFailure, colorRole, extractPeriods, formatDetails, isArkProvider, isCodingBaseUrl, renderQuota, shortLabel } from "../index.ts";
+import { classifyFailure, colorRole, extractPeriods, formatDetails, isCodingBaseUrl, renderQuota, shortLabel } from "../index.ts";
 
 const plain = (periods: Parameters<typeof renderQuota>[1]) => renderQuota((_r, t) => t, periods) ?? "";
 
@@ -63,20 +63,16 @@ assert.equal(classifyFailure(Object.assign(new Error("spawn arkcli ENOENT"), { c
 assert.equal(classifyFailure(new Error("boom")), "error");
 assert.equal(classifyFailure(null), "error");
 
-// isArkProvider - only show for matching providers
-assert.equal(isArkProvider("volcengine-ark"), true);
-assert.equal(isArkProvider("Volcengine-Ark/glm-5.3"), true); // substring match, case-insensitive
-assert.equal(isArkProvider("anthropic"), false);
-assert.equal(isArkProvider(undefined), false);
-assert.equal(isArkProvider("my-proxy", ["my-proxy"]), true);
-
-// isCodingBaseUrl - coding-plan endpoints only, not pay-per-use /api/v3
+// isCodingBaseUrl - exact match against the two official endpoints only
 assert.equal(isCodingBaseUrl("https://ark.cn-beijing.volces.com/api/coding"), true);
 assert.equal(isCodingBaseUrl("https://ark.cn-beijing.volces.com/api/coding/v3"), true);
 assert.equal(isCodingBaseUrl("https://ark.cn-beijing.volces.com/api/coding/v3/"), true);
-assert.equal(isCodingBaseUrl("https://ark.cn-beijing.volces.com/api/v3"), false);
-assert.equal(isCodingBaseUrl("https://evil.com/api/coding-clone"), false);
+assert.equal(isCodingBaseUrl("https://ark.cn-beijing.volces.com/api/coding/extra"), false); // no prefix match
+assert.equal(isCodingBaseUrl("https://ark.cn-beijing.volces.com/api/v3"), false); // pay-per-use
+assert.equal(isCodingBaseUrl("https://evil.com/api/coding"), false); // same path, different host
+assert.equal(isCodingBaseUrl("https://ARK.CN-BEIJING.VOLCES.com/api/coding"), true); // case-insensitive
+assert.equal(isCodingBaseUrl("  https://ark.cn-beijing.volces.com/api/coding  "), true); // trimmed
 assert.equal(isCodingBaseUrl(undefined), false);
-assert.equal(isCodingBaseUrl("https://my-proxy.tld/ark", ["https://my-proxy.tld/ark"]), true);
+assert.equal(isCodingBaseUrl("https://my-proxy.tld/ark", ["https://my-proxy.tld/ark"]), true); // env override
 
 console.log("all assertions passed");
