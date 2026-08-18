@@ -184,15 +184,18 @@ export default function arkQuotaExtension(pi: ExtensionAPI) {
 	// Refresh visibility whenever the active model/provider changes.
 	// Pure URL judgment: show only when the resolved base URL exactly equals
 	// a known Coding Plan endpoint. Provider names are arbitrary - never used.
-	function applyProvider(ctx: any) {
-		let baseUrl: string | undefined;
+	// NB: getProviderAuth is async and returns { env, auth: { baseUrl } }.
+	async function resolveBaseUrl(ctx: any): Promise<string | undefined> {
 		try {
-			const auth = ctx?.modelRegistry?.getProviderAuth?.(ctx?.model?.provider);
-			baseUrl = auth?.baseUrl ?? auth?.baseURL;
+			const result = await ctx?.modelRegistry?.getProviderAuth?.(ctx?.model?.provider);
+			return result?.auth?.baseUrl ?? result?.auth?.baseURL ?? result?.baseUrl;
 		} catch {
-			baseUrl = undefined;
+			return undefined;
 		}
-		arkActive = isCodingBaseUrl(baseUrl);
+	}
+
+	async function applyProvider(ctx: any) {
+		arkActive = isCodingBaseUrl(await resolveBaseUrl(ctx));
 		if (!arkActive) clearStatus();
 		return arkActive;
 	}
@@ -200,7 +203,7 @@ export default function arkQuotaExtension(pi: ExtensionAPI) {
 	pi.on("session_start", async (_event, ctx) => {
 		lastCtx = ctx;
 		if (!ctx?.ui?.setStatus) return;
-		if (!applyProvider(ctx)) return; // not on an Ark provider - stay hidden
+		if (!await applyProvider(ctx)) return; // not on a Coding Plan URL - stay hidden
 		const fg = bindFg(ctx);
 		if (!fg) return;
 		ctx.ui.setStatus("ark-quota", fg("dim", "⚡ ark…"));
@@ -210,7 +213,7 @@ export default function arkQuotaExtension(pi: ExtensionAPI) {
 	pi.on("model_select", async (_event, ctx) => {
 		lastCtx = ctx;
 		if (!ctx?.ui?.setStatus) return;
-		if (!applyProvider(ctx)) return;
+		if (!await applyProvider(ctx)) return;
 		const fg = bindFg(ctx);
 		if (!fg) return;
 		ctx.ui.setStatus("ark-quota", fg("dim", "⚡ ark…"));
@@ -250,7 +253,7 @@ export default function arkQuotaExtension(pi: ExtensionAPI) {
 			}
 
 			fetchedAt = 0; // force
-			if (!arkActive && lastCtx) applyProvider(lastCtx); // manual refresh works regardless
+			if (!arkActive && lastCtx) await applyProvider(lastCtx); // manual refresh works regardless
 			const periods = await fetchQuota();
 			if (periods === null) {
 				const hint =
