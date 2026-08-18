@@ -181,21 +181,19 @@ export default function arkQuotaExtension(pi: ExtensionAPI) {
 		setStatus(styled ?? fg("dim", "⚡ ark ⌀")); // subscribed but empty -> dim
 	}
 
-	// Refresh visibility whenever the active model/provider changes.
 	// Pure URL judgment: show only when the resolved base URL exactly equals
 	// a known Coding Plan endpoint. Provider names are arbitrary - never used.
-	// NB: getProviderAuth is async and returns { env, auth: { baseUrl } }.
-	async function resolveBaseUrl(ctx: any): Promise<string | undefined> {
+	// getProvider(id) returns the Provider object (sync), which carries baseUrl.
+	function resolveBaseUrl(ctx: any): string | undefined {
 		try {
-			const result = await ctx?.modelRegistry?.getProviderAuth?.(ctx?.model?.provider);
-			return result?.auth?.baseUrl ?? result?.auth?.baseURL ?? result?.baseUrl;
+			return ctx?.modelRegistry?.getProvider?.(ctx?.model?.provider)?.baseUrl;
 		} catch {
 			return undefined;
 		}
 	}
 
-	async function applyProvider(ctx: any) {
-		arkActive = isCodingBaseUrl(await resolveBaseUrl(ctx));
+	function applyProvider(ctx: any) {
+		arkActive = isCodingBaseUrl(resolveBaseUrl(ctx));
 		if (!arkActive) clearStatus();
 		return arkActive;
 	}
@@ -203,7 +201,7 @@ export default function arkQuotaExtension(pi: ExtensionAPI) {
 	pi.on("session_start", async (_event, ctx) => {
 		lastCtx = ctx;
 		if (!ctx?.ui?.setStatus) return;
-		if (!await applyProvider(ctx)) return; // not on a Coding Plan URL - stay hidden
+		if (!applyProvider(ctx)) return; // not on a Coding Plan URL - stay hidden
 		const fg = bindFg(ctx);
 		if (!fg) return;
 		ctx.ui.setStatus("ark-quota", fg("dim", "⚡ ark…"));
@@ -213,7 +211,7 @@ export default function arkQuotaExtension(pi: ExtensionAPI) {
 	pi.on("model_select", async (_event, ctx) => {
 		lastCtx = ctx;
 		if (!ctx?.ui?.setStatus) return;
-		if (!await applyProvider(ctx)) return;
+		if (!applyProvider(ctx)) return;
 		const fg = bindFg(ctx);
 		if (!fg) return;
 		ctx.ui.setStatus("ark-quota", fg("dim", "⚡ ark…"));
@@ -227,7 +225,7 @@ export default function arkQuotaExtension(pi: ExtensionAPI) {
 		if (!fg) return;
 		// Late-binding visibility: at session_start the model/auth may not be
 		// resolved yet, so re-check here - /ark-quota should not be required.
-		if (!await applyProvider(ctx)) return;
+		if (!applyProvider(ctx)) return;
 		// stale cache only - no spinner churn mid-session
 		if (Date.now() - fetchedAt < TTL_MS && lastPeriods) return;
 		await sync((s) => ctx.ui.setStatus("ark-quota", s), fg);
@@ -255,7 +253,7 @@ export default function arkQuotaExtension(pi: ExtensionAPI) {
 			}
 
 			fetchedAt = 0; // force
-			if (!arkActive && lastCtx) await applyProvider(lastCtx); // manual refresh works regardless
+			if (!arkActive && lastCtx) applyProvider(lastCtx); // manual refresh works regardless
 			const periods = await fetchQuota();
 			if (periods === null) {
 				const hint =
