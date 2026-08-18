@@ -5,7 +5,7 @@
 (5h / weekly / monthly) in the status bar.
 
 ```
-⚡ 5h 32% · 周 45% · 月 60%
+⚡ 5h 32% · wk 45% · mo 60%
 ```
 
 Percentages are color-graded (green < 70, yellow < 90, red ≥ 90) using the active
@@ -49,7 +49,7 @@ and restart pi (or `/reload`).
 
 | Display | Meaning |
 |---|---|
-| `⚡ 5h 32% · 周 45% · 月 60%` | normal |
+| `⚡ 5h 32% · wk 45% · mo 60%` | normal |
 | `⚡ ark…` | fetching |
 | `⚡ ark ✗` | arkcli missing / not logged in / query failed |
 | `⚡ ark ⌀` | subscribed but no period data |

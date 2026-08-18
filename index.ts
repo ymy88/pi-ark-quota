@@ -15,7 +15,7 @@
  *   ARK_QUOTA_PRODUCT   default "coding-plan"
  *   ARK_QUOTA_TTL_MS    cache TTL, default 300000 (5 min)
  *
- * Status bar: ⚡ 5h 32% · 周 45% · 月 60%   (green <70, yellow <90, red ≥90)
+ * Status bar: ⚡ 5h 32% · wk 45% · mo 60%   (green <70, yellow <90, red ≥90)
  * Degraded states render dim: "⚡ ark ✗" (arkcli missing / not logged in / error).
  */
 
@@ -40,9 +40,9 @@ export function shortLabel(label: string): string {
 		case "5h":
 			return "5h";
 		case "weekly":
-			return "周";
+			return "wk";
 		case "monthly":
-			return "月";
+			return "mo";
 		default:
 			return label;
 	}
@@ -76,11 +76,11 @@ export function renderQuota(
 
 /** Human detail lines for /ark-quota, including reset times. */
 export function formatDetails(periods: Period[]): string {
+	const cn: Record<string, string> = { "5h": "5小时窗口", wk: "本周", mo: "本月" };
 	const lines = periods.map((p) => {
+		const name = cn[shortLabel(p.label)] ?? p.label;
 		const base =
-			typeof p.percent === "number"
-				? `${shortLabel(p.label)}: 已用 ${p.percent}%`
-				: `${shortLabel(p.label)}: 无数据`;
+			typeof p.percent === "number" ? `${name}: 已用 ${p.percent}%` : `${name}: 无数据`;
 		if (p.reset_at) return `${base}，重置 ${p.reset_at}`;
 		return base;
 	});
