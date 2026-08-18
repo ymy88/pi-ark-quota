@@ -16,7 +16,7 @@
  *   ARK_QUOTA_TTL_MS    cache TTL, default 300000 (5 min)
  *
  * Status bar: ⚡ 5h 32% · 周 45% · 月 60%   (green <70, yellow <90, red ≥90)
- * Degraded states render dim: "⚡ arkcli?" (not installed), "⚡ ark ✗" (error).
+ * Degraded states render dim: "⚡ ark ✗" (arkcli missing / not logged in / error).
  */
 
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
