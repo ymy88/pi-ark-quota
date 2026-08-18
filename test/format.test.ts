@@ -49,14 +49,14 @@ assert.equal(renderQuota(fg, periods), "⚡ 5h <success>32%</> · wk <success>45
 assert.equal(renderQuota(fg, [{ label: "monthly", percent: 95 }]), "⚡ mo <error>95%</>");
 // real API returns floats - round for display
 assert.equal(plain([{ label: "session", percent: 33.176379499999996 }]), "⚡ 5h 33%");
-assert.ok(formatDetails([{ label: "weekly", percent: 9.19821 }]).includes("本周: 已用 9%"));
+assert.ok(formatDetails([{ label: "weekly", percent: 9.19821 }]).includes("wk: 9% used"));
 
 // formatDetails
 const details = formatDetails(periods);
-assert.ok(details.includes("5小时窗口: 已用 32%"));
-assert.ok(details.includes("重置 2026-08-18T20:00:00+08:00"));
-assert.ok(details.includes("本周: 已用 45%") && !details.includes("本周: 已用 45%，重置"));
-assert.ok(formatDetails([]).includes("无套餐用量数据"));
+assert.ok(details.includes("5h: 32% used"));
+assert.ok(details.includes("resets 2026-08-18T20:00:00+08:00"));
+assert.ok(details.includes("wk: 45% used") && !details.includes("wk: 45% used, resets"));
+assert.ok(formatDetails([]).includes("No quota data"));
 
 // classifyFailure - ENOENT means arkcli is not on PATH
 assert.equal(classifyFailure(Object.assign(new Error("spawn arkcli ENOENT"), { code: "ENOENT" })), "missing");

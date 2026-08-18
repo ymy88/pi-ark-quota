@@ -16,7 +16,7 @@
  *   ARK_QUOTA_TTL_MS    cache TTL, default 300000 (5 min)
  *
  * Status bar: ⚡ 5h 32% · wk 45% · mo 60%   (green <70, yellow <90, red ≥90)
- * Degraded states render dim: "⚡ arkcli 未安装" (run /ark-quota install),
+ * Degraded states render dim: "⚡ arkcli missing" (run /ark-quota install),
  * "⚡ ark ✗" (not logged in / query failed). See setup guide in notify.
  */
 
@@ -80,15 +80,14 @@ export function renderQuota(
 
 /** Human detail lines for /ark-quota, including reset times. */
 export function formatDetails(periods: Period[]): string {
-	const cn: Record<string, string> = { "5h": "5小时窗口", wk: "本周", mo: "本月" };
 	const lines = periods.map((p) => {
-		const name = cn[shortLabel(p.label)] ?? p.label;
+		const name = shortLabel(p.label);
 		const pct = typeof p.percent === "number" ? Math.round(p.percent) : null;
-		const base = pct !== null ? `${name}: 已用 ${pct}%` : `${name}: 无数据`;
-		if (p.reset_at) return `${base}，重置 ${p.reset_at}`;
+		const base = pct !== null ? `${name}: ${pct}% used` : `${name}: no data`;
+		if (p.reset_at) return `${base}, resets ${p.reset_at}`;
 		return base;
 	});
-	return lines.length ? lines.join("\n") : "无套餐用量数据（未订阅或无周期数据）";
+	return lines.length ? lines.join("\n") : "No quota data (not subscribed or no periods)";
 }
 
 /** Classify a fetchQuota failure: "missing" (arkcli not installed) or "error". */
@@ -135,9 +134,9 @@ export default function arkQuotaExtension(pi: ExtensionAPI) {
 		if (periods === null) {
 			if (!lastPeriods) {
 				if (lastFailure === "missing") {
-					setStatus(fg("dim", "⚡ arkcli 未安装"));
+					setStatus(fg("dim", "⚡ arkcli missing"));
 					if (!notifiedSetup) {
-						notify?.("pi-ark-quota: 需要 arkcli。运行 /ark-quota install 一键安装，或手动 npm i -g @volcengine/ark-cli", "warning");
+						notify?.("pi-ark-quota: arkcli is required. Run /ark-quota install, or manually: npm i -g @volcengine/ark-cli", "warning");
 						notifiedSetup = true;
 					}
 				} else {
@@ -179,19 +178,19 @@ export default function arkQuotaExtension(pi: ExtensionAPI) {
 
 	pi.registerCommand("ark-quota", {
 		description: "Ark Coding Plan quota; `install` subcommand installs arkcli",
-			handler: async (args, ctx) => {
+		handler: async (args, ctx) => {
 			// /ark-quota install - user-invoked global install of arkcli
 			if (String(args || "").trim() === "install") {
 				try {
-					ctx?.ui?.notify?.("ark-quota: 正在安装 @volcengine/ark-cli …", "info");
+					ctx?.ui?.notify?.("ark-quota: installing @volcengine/ark-cli ...", "info");
 					await execFileP("npm", ["i", "-g", "@volcengine/ark-cli"], { timeout: 120_000 });
 					ctx?.ui?.notify?.(
-						"ark-quota: 安装完成。请运行 `arkcli auth login volc-sso` 完成登录，然后 /ark-quota 刷新。",
+						"ark-quota: installed. Run `arkcli auth login volc-sso` to log in, then /ark-quota to refresh.",
 					"success",
 				);
 				} catch (e) {
 					ctx?.ui?.notify?.(
-						`ark-quota: 安装失败（${(e as Error).message}）。请手动运行 npm i -g @volcengine/ark-cli`,
+						`ark-quota: install failed (${(e as Error).message}). Run manually: npm i -g @volcengine/ark-cli`,
 					"error",
 				);
 				}
@@ -203,8 +202,8 @@ export default function arkQuotaExtension(pi: ExtensionAPI) {
 			if (periods === null) {
 				const hint =
 					lastFailure === "missing"
-						? "ark-quota: arkcli 未安装。运行 /ark-quota install 安装。"
-						: "ark-quota: 查询失败。若未登录，请运行 arkcli auth login volc-sso。";
+						? "ark-quota: arkcli is not installed. Run /ark-quota install."
+						: "ark-quota: query failed. If not logged in, run: arkcli auth login volc-sso";
 				ctx?.ui?.notify?.(hint, "error");
 				return;
 			}

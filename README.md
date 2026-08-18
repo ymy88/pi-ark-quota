@@ -55,7 +55,7 @@ and restart pi (or `/reload`).
 |---|---|
 | `⚡ 5h 32% · wk 45% · mo 60%` | normal |
 | `⚡ ark…` | fetching |
-| `⚡ arkcli 未安装` | arkcli not on PATH - run `/ark-quota install` |
+| `⚡ arkcli missing` | arkcli not on PATH - run `/ark-quota install` |
 | `⚡ ark ✗` | not logged in / query failed - try `arkcli auth login volc-sso` |
 | `⚡ ark ⌀` | subscribed but no period data |
 
