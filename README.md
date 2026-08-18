@@ -27,9 +27,13 @@ after each settled agent run.
 npm i -g @volcengine/ark-cli
 arkcli auth login volc-sso
 
-# 2. install this extension
-npm i -g pi-ark-quota
+# 2. install this extension into pi
+pi install npm:pi-ark-quota
 ```
+
+Then restart pi (or `/reload`). Update later with `pi update npm:pi-ark-quota`.
+Equivalent to adding `"npm:pi-ark-quota"` to the `packages` array in
+`~/.pi/agent/settings.json`.
 
 Or skip step 1: if arkcli is missing, the extension shows a hint and
 `/ark-quota install` installs it for you (login still has to be done by you:
