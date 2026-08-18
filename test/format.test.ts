@@ -47,6 +47,9 @@ assert.equal(plain([{ label: "weekly" }]), ""); // no percent -> dropped
 const fg = (role: string, t: string) => `<${role}>${t}</>`;
 assert.equal(renderQuota(fg, periods), "⚡ 5h <success>32%</> · wk <success>45%</> · mo <success>60%</>");
 assert.equal(renderQuota(fg, [{ label: "monthly", percent: 95 }]), "⚡ mo <error>95%</>");
+// real API returns floats - round for display
+assert.equal(plain([{ label: "session", percent: 33.176379499999996 }]), "⚡ 5h 33%");
+assert.ok(formatDetails([{ label: "weekly", percent: 9.19821 }]).includes("本周: 已用 9%"));
 
 // formatDetails
 const details = formatDetails(periods);

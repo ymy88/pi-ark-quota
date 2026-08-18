@@ -70,7 +70,10 @@ export function renderQuota(
 ): string | undefined {
 	const parts = periods
 		.filter((p) => typeof p.percent === "number")
-		.map((p) => `${shortLabel(p.label)} ${fg(colorRole(p.percent!), `${p.percent}%`)}`);
+		.map((p) => {
+			const pct = Math.round(p.percent!);
+			return `${shortLabel(p.label)} ${fg(colorRole(pct), `${pct}%`)}`;
+		});
 	return parts.length ? `⚡ ${parts.join(" · ")}` : undefined;
 }
 
@@ -79,8 +82,8 @@ export function formatDetails(periods: Period[]): string {
 	const cn: Record<string, string> = { "5h": "5小时窗口", wk: "本周", mo: "本月" };
 	const lines = periods.map((p) => {
 		const name = cn[shortLabel(p.label)] ?? p.label;
-		const base =
-			typeof p.percent === "number" ? `${name}: 已用 ${p.percent}%` : `${name}: 无数据`;
+		const pct = typeof p.percent === "number" ? Math.round(p.percent) : null;
+		const base = pct !== null ? `${name}: 已用 ${pct}%` : `${name}: 无数据`;
 		if (p.reset_at) return `${base}，重置 ${p.reset_at}`;
 		return base;
 	});
