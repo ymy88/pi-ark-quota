@@ -23,8 +23,10 @@ after each settled agent run.
 ## Setup
 
 ```bash
-# 1. install arkcli and log in once
-npm i -g @volcengine/ark-cli
+# 1. install arkcli (CI=1 suppresses its postinstall skill injection,
+#    which would otherwise dump 25 arkcli-* skills into every agent's
+#    context; the binary still installs and works the same)
+CI=1 npm i -g @volcengine/ark-cli
 arkcli auth login volc-sso
 
 # 2. install this extension into pi

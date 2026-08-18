@@ -238,7 +238,10 @@ export default function arkQuotaExtension(pi: ExtensionAPI) {
 			if (String(args || "").trim() === "install") {
 				try {
 					ctx?.ui?.notify?.("ark-quota: installing @volcengine/ark-cli ...", "info");
-					await execFileP("npm", ["i", "-g", "@volcengine/ark-cli"], { timeout: 120_000 });
+					await execFileP("npm", ["i", "-g", "@volcengine/ark-cli"], {
+						env: { ...process.env, CI: "1" }, // suppress arkcli postinstall skill injection
+						timeout: 120_000,
+					});
 					ctx?.ui?.notify?.(
 						"ark-quota: installed. Run `arkcli auth login volc-sso` to log in, then /ark-quota to refresh.",
 					"success",
