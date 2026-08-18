@@ -1,8 +1,10 @@
 {
   "name": "pi-ark-quota",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "pi extension: show Volcano Ark Coding Plan quota (5h/weekly/monthly) in the status bar via arkcli",
-  "keywords": ["pi-package"],
+  "keywords": [
+    "pi-package"
+  ],
   "license": "MIT",
   "author": {
     "name": "ymy88",
@@ -20,9 +22,15 @@
   "publishConfig": {
     "registry": "https://registry.npmjs.org/"
   },
-  "files": ["index.ts", "README.md", "LICENSE"],
+  "files": [
+    "index.ts",
+    "README.md",
+    "LICENSE"
+  ],
   "pi": {
-    "extensions": ["./index.ts"]
+    "extensions": [
+      "./index.ts"
+    ]
   },
   "peerDependencies": {
     "@earendil-works/pi-coding-agent": "*"
