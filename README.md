@@ -31,6 +31,10 @@ arkcli auth login volc-sso
 npm i -g pi-ark-quota
 ```
 
+Or skip step 1: if arkcli is missing, the extension shows a hint and
+`/ark-quota install` installs it for you (login still has to be done by you:
+`arkcli auth login volc-sso`).
+
 Then add `npm:pi-ark-quota` to the `packages` array in `~/.pi/agent/settings.json`
 and restart pi (or `/reload`).
 
@@ -51,7 +55,8 @@ and restart pi (or `/reload`).
 |---|---|
 | `⚡ 5h 32% · wk 45% · mo 60%` | normal |
 | `⚡ ark…` | fetching |
-| `⚡ ark ✗` | arkcli missing / not logged in / query failed |
+| `⚡ arkcli 未安装` | arkcli not on PATH - run `/ark-quota install` |
+| `⚡ ark ✗` | not logged in / query failed - try `arkcli auth login volc-sso` |
 | `⚡ ark ⌀` | subscribed but no period data |
 
 ## License

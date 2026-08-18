@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { colorRole, extractPeriods, formatDetails, renderQuota, shortLabel } from "../index.ts";
+import { classifyFailure, colorRole, extractPeriods, formatDetails, renderQuota, shortLabel } from "../index.ts";
 
 const plain = (periods: Parameters<typeof renderQuota>[1]) => renderQuota((_r, t) => t, periods) ?? "";
 
@@ -57,5 +57,10 @@ assert.ok(details.includes("5小时窗口: 已用 32%"));
 assert.ok(details.includes("重置 2026-08-18T20:00:00+08:00"));
 assert.ok(details.includes("本周: 已用 45%") && !details.includes("本周: 已用 45%，重置"));
 assert.ok(formatDetails([]).includes("无套餐用量数据"));
+
+// classifyFailure - ENOENT means arkcli is not on PATH
+assert.equal(classifyFailure(Object.assign(new Error("spawn arkcli ENOENT"), { code: "ENOENT" })), "missing");
+assert.equal(classifyFailure(new Error("boom")), "error");
+assert.equal(classifyFailure(null), "error");
 
 console.log("all assertions passed");

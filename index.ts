@@ -16,7 +16,8 @@
  *   ARK_QUOTA_TTL_MS    cache TTL, default 300000 (5 min)
  *
  * Status bar: ⚡ 5h 32% · wk 45% · mo 60%   (green <70, yellow <90, red ≥90)
- * Degraded states render dim: "⚡ ark ✗" (arkcli missing / not logged in / error).
+ * Degraded states render dim: "⚡ arkcli 未安装" (run /ark-quota install),
+ * "⚡ ark ✗" (not logged in / query failed). See setup guide in notify.
  */
 
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
@@ -90,6 +91,11 @@ export function formatDetails(periods: Period[]): string {
 	return lines.length ? lines.join("\n") : "无套餐用量数据（未订阅或无周期数据）";
 }
 
+/** Classify a fetchQuota failure: "missing" (arkcli not installed) or "error". */
+export function classifyFailure(err: unknown): "missing" | "error" {
+	return (err as { code?: string })?.code === "ENOENT" ? "missing" : "error";
+}
+
 // ---- extension ----
 
 export default function arkQuotaExtension(pi: ExtensionAPI) {
@@ -97,6 +103,8 @@ export default function arkQuotaExtension(pi: ExtensionAPI) {
 	let fetchedAt = 0;
 	let inFlight = false;
 	let lastPeriods: Period[] | null = null;
+	let lastFailure: "missing" | "error" | null = null;
+	let notifiedSetup = false;
 
 	async function fetchQuota(): Promise<Period[] | null> {
 		if (inFlight) return null;
@@ -112,18 +120,30 @@ export default function arkQuotaExtension(pi: ExtensionAPI) {
 			const json = JSON.parse(start >= 0 ? stdout.slice(start) : stdout);
 			lastPeriods = extractPeriods(json, PRODUCT);
 			fetchedAt = Date.now();
+			lastFailure = null;
 			return lastPeriods;
-		} catch {
-			return null; // arkcli missing / not logged in / network - keep old state
+		} catch (err) {
+			lastFailure = classifyFailure(err);
+			return null; // keep old state
 		} finally {
 			inFlight = false;
 		}
 	}
 
-	async function sync(setStatus: (s: string | undefined) => void, fg: (role: string, t: string) => string) {
+	async function sync(setStatus: (s: string | undefined) => void, fg: (role: string, t: string) => string, notify?: (msg: string, level?: string) => void) {
 		const periods = await fetchQuota();
 		if (periods === null) {
-			if (!lastPeriods) setStatus(fg("dim", "⚡ ark ✗")); // never had data
+			if (!lastPeriods) {
+				if (lastFailure === "missing") {
+					setStatus(fg("dim", "⚡ arkcli 未安装"));
+					if (!notifiedSetup) {
+						notify?.("pi-ark-quota: 需要 arkcli。运行 /ark-quota install 一键安装，或手动 npm i -g @volcengine/ark-cli", "warning");
+						notifiedSetup = true;
+					}
+				} else {
+					setStatus(fg("dim", "⚡ ark ✗"));
+				}
+			}
 			return;
 		}
 		const styled = renderQuota(fg, periods);
@@ -140,7 +160,7 @@ export default function arkQuotaExtension(pi: ExtensionAPI) {
 			return; // theme proxy not ready (pi-web before initTheme)
 		}
 		ctx.ui.setStatus("ark-quota", fg("dim", "⚡ ark…"));
-		await sync((s) => ctx.ui.setStatus("ark-quota", s), fg);
+		await sync((s) => ctx.ui.setStatus("ark-quota", s), fg, ctx.ui.notify?.bind(ctx.ui));
 	});
 
 	pi.on("agent_settled", async () => {
@@ -158,15 +178,34 @@ export default function arkQuotaExtension(pi: ExtensionAPI) {
 	});
 
 	pi.registerCommand("ark-quota", {
-		description: "Refresh Volcano Ark Coding Plan quota (forces cache bypass)",
-		handler: async (_args, ctx) => {
+		description: "Ark Coding Plan quota; `install` subcommand installs arkcli",
+			handler: async (args, ctx) => {
+			// /ark-quota install - user-invoked global install of arkcli
+			if (String(args || "").trim() === "install") {
+				try {
+					ctx?.ui?.notify?.("ark-quota: 正在安装 @volcengine/ark-cli …", "info");
+					await execFileP("npm", ["i", "-g", "@volcengine/ark-cli"], { timeout: 120_000 });
+					ctx?.ui?.notify?.(
+						"ark-quota: 安装完成。请运行 `arkcli auth login volc-sso` 完成登录，然后 /ark-quota 刷新。",
+					"success",
+				);
+				} catch (e) {
+					ctx?.ui?.notify?.(
+						`ark-quota: 安装失败（${(e as Error).message}）。请手动运行 npm i -g @volcengine/ark-cli`,
+					"error",
+				);
+				}
+				return;
+			}
+
 			fetchedAt = 0; // force
 			const periods = await fetchQuota();
 			if (periods === null) {
-				ctx?.ui?.notify?.(
-					"ark-quota: 查询失败。检查 arkcli 已安装并已 `arkcli auth login volc-sso`。",
-					"error",
-				);
+				const hint =
+					lastFailure === "missing"
+						? "ark-quota: arkcli 未安装。运行 /ark-quota install 安装。"
+						: "ark-quota: 查询失败。若未登录，请运行 arkcli auth login volc-sso。";
+				ctx?.ui?.notify?.(hint, "error");
 				return;
 			}
 			const fg = (() => {
