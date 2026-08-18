@@ -221,11 +221,13 @@ export default function arkQuotaExtension(pi: ExtensionAPI) {
 	});
 
 	pi.on("agent_settled", async () => {
-		if (!arkActive) return;
 		const ctx = lastCtx;
 		if (!ctx?.ui?.setStatus) return;
 		const fg = bindFg(ctx);
 		if (!fg) return;
+		// Late-binding visibility: at session_start the model/auth may not be
+		// resolved yet, so re-check here - /ark-quota should not be required.
+		if (!await applyProvider(ctx)) return;
 		// stale cache only - no spinner churn mid-session
 		if (Date.now() - fetchedAt < TTL_MS && lastPeriods) return;
 		await sync((s) => ctx.ui.setStatus("ark-quota", s), fg);
