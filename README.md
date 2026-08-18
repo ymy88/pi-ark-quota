@@ -42,8 +42,12 @@ Or skip step 1: if arkcli is missing, the extension shows a hint and
 Then add `npm:pi-ark-quota` to the `packages` array in `~/.pi/agent/settings.json`
 and restart pi (or `/reload`).
 
-The status only appears when the active model's provider matches `ARK_QUOTA_PROVIDERS`
-(default: `volcengine-ark`); switch to any other provider and it hides itself.
+The status only appears when the active model's provider resolves to a Coding Plan
+base URL (`ARK_QUOTA_URLS`, default `https://ark.cn-beijing.volces.com/api/coding`,
+covering both the OpenAI `/api/coding/v3` and Anthropic `/api/coding` endpoints).
+Pay-per-use Ark (`/api/v3`) and all other providers stay hidden. If the base URL
+cannot be resolved, it falls back to provider-id matching (`ARK_QUOTA_PROVIDERS`,
+default `volcengine-ark`).
 
 ## Commands
 
@@ -55,7 +59,8 @@ The status only appears when the active model's provider matches `ARK_QUOTA_PROV
 |---|---|---|
 | `ARK_QUOTA_PRODUCT` | `coding-plan` | arkcli product id (`coding-plan`, `agent-plan`, …) |
 | `ARK_QUOTA_TTL_MS` | `300000` | cache TTL in milliseconds |
-| `ARK_QUOTA_PROVIDERS` | `volcengine-ark` | comma-separated provider-id substrings; the status only shows when the active provider matches |
+| `ARK_QUOTA_PROVIDERS` | `volcengine-ark` | fallback provider-id substrings when base URL is unresolvable |
+| `ARK_QUOTA_URLS` | `https://ark.cn-beijing.volces.com/api/coding` | comma-separated coding-plan base-URL prefixes that trigger the status |
 
 ## Status states
 

@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { classifyFailure, colorRole, extractPeriods, formatDetails, isArkProvider, renderQuota, shortLabel } from "../index.ts";
+import { classifyFailure, colorRole, extractPeriods, formatDetails, isArkProvider, isCodingBaseUrl, renderQuota, shortLabel } from "../index.ts";
 
 const plain = (periods: Parameters<typeof renderQuota>[1]) => renderQuota((_r, t) => t, periods) ?? "";
 
@@ -69,5 +69,14 @@ assert.equal(isArkProvider("Volcengine-Ark/glm-5.3"), true); // substring match,
 assert.equal(isArkProvider("anthropic"), false);
 assert.equal(isArkProvider(undefined), false);
 assert.equal(isArkProvider("my-proxy", ["my-proxy"]), true);
+
+// isCodingBaseUrl - coding-plan endpoints only, not pay-per-use /api/v3
+assert.equal(isCodingBaseUrl("https://ark.cn-beijing.volces.com/api/coding"), true);
+assert.equal(isCodingBaseUrl("https://ark.cn-beijing.volces.com/api/coding/v3"), true);
+assert.equal(isCodingBaseUrl("https://ark.cn-beijing.volces.com/api/coding/v3/"), true);
+assert.equal(isCodingBaseUrl("https://ark.cn-beijing.volces.com/api/v3"), false);
+assert.equal(isCodingBaseUrl("https://evil.com/api/coding-clone"), false);
+assert.equal(isCodingBaseUrl(undefined), false);
+assert.equal(isCodingBaseUrl("https://my-proxy.tld/ark", ["https://my-proxy.tld/ark"]), true);
 
 console.log("all assertions passed");

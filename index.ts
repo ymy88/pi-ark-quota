@@ -14,8 +14,12 @@
  * Config (env):
  *   ARK_QUOTA_PRODUCT    default "coding-plan"
  *   ARK_QUOTA_TTL_MS     cache TTL, default 300000 (5 min)
- *   ARK_QUOTA_PROVIDERS  comma-separated provider-id substrings to match,
- *                        default "volcengine-ark"
+ *   ARK_QUOTA_URLS       comma-separated coding-plan base-URL prefixes,
+ *                        default "https://ark.cn-beijing.volces.com/api/coding"
+ *                        (covers both the OpenAI /api/coding/v3 and
+ *                        Anthropic /api/coding endpoints)
+ *   ARK_QUOTA_PROVIDERS  fallback provider-id substrings when the base URL
+ *                        cannot be resolved, default "volcengine-ark"
  *
  * Status bar: ⚡ 5h 32% · wk 45% · mo 60%   (green <70, yellow <90, red ≥90)
  * Degraded states render dim: "⚡ arkcli missing" (run /ark-quota install),
@@ -33,6 +37,10 @@ const TTL_MS = Number(process.env.ARK_QUOTA_TTL_MS) || 5 * 60 * 1000;
 const PROVIDERS = (process.env.ARK_QUOTA_PROVIDERS || "volcengine-ark")
 	.split(",")
 	.map((s) => s.trim().toLowerCase())
+	.filter(Boolean);
+const URLS = (process.env.ARK_QUOTA_URLS || "https://ark.cn-beijing.volces.com/api/coding")
+	.split(",")
+	.map((s) => s.trim().toLowerCase().replace(/\/+$/, ""))
 	.filter(Boolean);
 const TIMEOUT_MS = 15_000;
 
@@ -108,6 +116,13 @@ export function isArkProvider(providerId: string | undefined, list: string[] = P
 	return list.some((frag) => id.includes(frag));
 }
 
+/** Does this base URL point at a Coding Plan endpoint (not pay-per-use /api/v3)? */
+export function isCodingBaseUrl(url: string | undefined, prefixes: string[] = URLS): boolean {
+	if (!url) return false;
+	const u = url.toLowerCase().replace(/\/+$/, "");
+	return prefixes.some((p) => u === p || u.startsWith(p + "/"));
+}
+
 // ---- extension ----
 
 export default function arkQuotaExtension(pi: ExtensionAPI) {
@@ -180,8 +195,20 @@ export default function arkQuotaExtension(pi: ExtensionAPI) {
 	}
 
 	// Refresh visibility whenever the active model/provider changes.
+	// Prefer the resolved base URL (coding-plan endpoints only); fall back to
+	// provider-id matching when auth cannot be resolved.
 	function applyProvider(ctx: any) {
-		arkActive = isArkProvider(ctx?.model?.provider);
+		let baseUrl: string | undefined;
+		try {
+			const auth = ctx?.modelRegistry?.getProviderAuth?.(ctx?.model?.provider);
+			baseUrl = auth?.baseUrl ?? auth?.baseURL;
+		} catch {
+			baseUrl = undefined;
+		}
+		arkActive =
+			baseUrl !== undefined
+				? isCodingBaseUrl(baseUrl)
+				: isArkProvider(ctx?.model?.provider);
 		if (!arkActive) clearStatus();
 		return arkActive;
 	}
