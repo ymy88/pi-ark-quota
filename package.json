@@ -17,6 +17,9 @@
     "url": "https://github.com/ymy88/pi-ark-quota/issues"
   },
   "type": "module",
+  "publishConfig": {
+    "registry": "https://registry.npmjs.org/"
+  },
   "files": ["index.ts", "README.md", "LICENSE"],
   "pi": {
     "extensions": ["./index.ts"]
