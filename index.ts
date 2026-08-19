@@ -168,7 +168,7 @@ export default function arkQuotaExtension(pi: ExtensionAPI) {
 				if (lastFailure === "missing") {
 					setStatus(fg("dim", "⚡ arkcli missing"));
 					if (!notifiedSetup) {
-						notify?.("pi-ark-quota: arkcli is required. Run /ark-quota install, or manually: npm i -g @volcengine/ark-cli", "warning");
+						notify?.("pi-ark-quota: arkcli not installed yet (normal on first run). Run /ark-quota install, or manually: npm i -g @volcengine/ark-cli", "info");
 						notifiedSetup = true;
 					}
 				} else {
