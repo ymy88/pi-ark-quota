@@ -1,6 +1,6 @@
 {
   "name": "pi-ark-quota",
-  "version": "0.2.4",
+  "version": "0.2.5",
   "description": "pi extension: show Volcano Ark Coding Plan quota (5h/weekly/monthly) in the status bar via arkcli",
   "keywords": [
     "pi-package"
