@@ -64,6 +64,14 @@ export function colorRole(percent: number): "success" | "warning" | "error" {
 	return "success";
 }
 
+/** Error message from the matching product item, if any (login-expired etc; exit code is 0). */
+export function extractAuthError(json: any, product = PRODUCT): string | null {
+	for (const item of json?.items ?? []) {
+		if (item?.product === product && typeof item?.error === "string") return item.error;
+	}
+	return null;
+}
+
 /** Find the subscribed quota periods in an `arkcli usage plan` JSON payload. */
 export function extractPeriods(json: any, product = PRODUCT): Period[] {
 	for (const item of json?.items ?? []) {
@@ -117,7 +125,7 @@ export default function arkQuotaExtension(pi: ExtensionAPI) {
 	let fetchedAt = 0;
 	let inFlight = false;
 	let lastPeriods: Period[] | null = null;
-	let lastFailure: "missing" | "error" | null = null;
+	let lastFailure: "missing" | "error" | "auth" | null = null;
 	let notifiedSetup = false;
 	let arkActive = false;
 
@@ -133,6 +141,16 @@ export default function arkQuotaExtension(pi: ExtensionAPI) {
 			);
 			const start = stdout.indexOf("{");
 			const json = JSON.parse(start >= 0 ? stdout.slice(start) : stdout);
+			// arkcli reports login expiry with exit code 0 and subscribed:false +
+			// an `error` field ("refresh_token is invalid ... please run `arkcli auth
+			// login volc-sso`"). Detect it before extractPeriods misreads it as
+			// "not subscribed".
+			const authError = extractAuthError(json, PRODUCT);
+			if (authError) {
+				lastFailure = "auth";
+				lastPeriods = null; // stale data would lie
+				return null;
+			}
 			lastPeriods = extractPeriods(json, PRODUCT);
 			fetchedAt = Date.now();
 			lastFailure = null;
@@ -171,6 +189,8 @@ export default function arkQuotaExtension(pi: ExtensionAPI) {
 						notify?.("pi-ark-quota: arkcli not installed yet (normal on first run). Run /ark-quota install, or manually: npm i -g @volcengine/ark-cli", "info");
 						notifiedSetup = true;
 					}
+				} else if (lastFailure === "auth") {
+					setStatus(fg("dim", "⚡ login ✗"));
 				} else {
 					setStatus(fg("dim", "⚡ ark ✗"));
 				}
@@ -262,7 +282,9 @@ export default function arkQuotaExtension(pi: ExtensionAPI) {
 				const hint =
 					lastFailure === "missing"
 						? "ark-quota: arkcli is not installed. Run /ark-quota install."
-						: "ark-quota: query failed. If not logged in, run: arkcli auth login volc-sso";
+						: lastFailure === "auth"
+							? "ark-quota: login expired (STS refresh failed). Run: arkcli auth login volc-sso\nThen run /ark-quota again."
+							: "ark-quota: query failed. If not logged in, run: arkcli auth login volc-sso";
 				ctx?.ui?.notify?.(hint, "error");
 				return;
 			}

@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { classifyFailure, colorRole, extractPeriods, formatDetails, isCodingBaseUrl, renderQuota, shortLabel } from "../index.ts";
+import { classifyFailure, colorRole, extractAuthError, extractPeriods, formatDetails, isCodingBaseUrl, renderQuota, shortLabel } from "../index.ts";
 
 const plain = (periods: Parameters<typeof renderQuota>[1]) => renderQuota((_r, t) => t, periods) ?? "";
 
@@ -39,6 +39,22 @@ const periods = extractPeriods(payload, "coding-plan");
 assert.equal(periods.length, 3);
 assert.deepEqual(extractPeriods({ items: [] }), []);
 assert.deepEqual(extractPeriods({}), []);
+
+// extractAuthError - login expiry comes back as exit 0 + error field
+const expiredPayload = {
+	viewer: { auth_method: "apikey" },
+	items: [
+		{
+			product: "coding-plan",
+			subscribed: false,
+			error: "GetCodingPlanUsage requires Volcengine Ark SSO STS, please run `arkcli auth login volc-sso`: STS 续期失败: token 交换失败: invalid_request - The request parameter refresh_token is invalid.",
+		},
+	],
+};
+assert.ok(extractAuthError(expiredPayload, "coding-plan")?.includes("refresh_token"));
+assert.equal(extractAuthError(expiredPayload, "agent-plan"), null); // other product
+assert.equal(extractAuthError(payload), null); // normal payload has no error
+assert.equal(extractAuthError({ items: [{ product: "coding-plan", error: 42 }] }), null); // non-string ignored
 
 // renderQuota (plain = identity fg)
 assert.equal(plain(periods), "⚡ 5h 32% · wk 45% · mo 60%");

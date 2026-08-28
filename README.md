@@ -71,6 +71,7 @@ provider stay hidden. Provider names are never used for the decision.
 | `⚡ 5h 32% · wk 45% · mo 60%` | normal |
 | `⚡ ark…` | fetching |
 | `⚡ arkcli missing` | arkcli not on PATH - run `/ark-quota install` |
+| `⚡ login ✗` | login expired - run `arkcli auth login volc-sso` |
 | `⚡ ark ✗` | not logged in / query failed - try `arkcli auth login volc-sso` |
 | `⚡ ark ⌀` | subscribed but no period data |
 
